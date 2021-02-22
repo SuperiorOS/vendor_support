@@ -20,6 +20,7 @@ import android.content.Context;
 import androidx.preference.EditTextPreference;
 import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.provider.Settings;
 
 public class SystemSettingEditTextPreference extends EditTextPreference {
     private boolean mAutoSummary = false;
@@ -39,13 +40,32 @@ public class SystemSettingEditTextPreference extends EditTextPreference {
         setPreferenceDataStore(new SystemSettingsStore(context.getContentResolver()));
     }
 
+    private boolean isPersisted() {
+        return Settings.System.getString(getContext().getContentResolver(), getKey()) != null;
+    }
+
+    private String getString(String key, String defaultValue) {
+        String result = Settings.System.getString(getContext().getContentResolver(), key);
+        return result == null ? defaultValue : result;
+    }
+
     @Override
-    protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
-        // This is what default ListPreference implementation is doing without respecting
-        // real default value:
-        //setText(restoreValue ? getPersistedString(mText) : (String) defaultValue);
-        // Instead, we better do
-        setText(restoreValue ? getPersistedString((String) defaultValue) : (String) defaultValue);
+    protected void onSetInitialValue(boolean restorePersistedValue, Object defaultValue) {
+        final String value;
+        if (!restorePersistedValue || !isPersisted()) {
+            if (defaultValue == null) {
+                return;
+            }
+            value = (String) defaultValue;
+            if (shouldPersist()) {
+                persistString(value);
+            }
+        } else {
+            // Note: the default is not used because to have got here
+            // isPersisted() must be true.
+            value = getString(getKey(), null /* not used */);
+        }
+        setText(value);
     }
 
     @Override

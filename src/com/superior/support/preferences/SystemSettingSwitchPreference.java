@@ -19,6 +19,7 @@ package com.superior.support.preferences;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.provider.Settings;
 
 import androidx.preference.SwitchPreferenceCompat;
 
@@ -38,14 +39,31 @@ public class SystemSettingSwitchPreference extends SwitchPreferenceCompat {
         setPreferenceDataStore(new SystemSettingsStore(context.getContentResolver()));
     }
 
+    protected boolean isPersisted() {
+        return Settings.System.getString(getContext().getContentResolver(), getKey()) != null;
+    }
+
+    protected boolean getBoolean(String key, boolean defaultValue) {
+        return Settings.System.getInt(getContext().getContentResolver(),
+                key, defaultValue ? 1 : 0) != 0;
+    }
+
     @Override
-    protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
-        // This is what default TwoStatePreference implementation is doing without respecting
-        // real default value:
-        //setChecked(restoreValue ? getPersistedBoolean(mChecked)
-        //        : (Boolean) defaultValue);
-        // Instead, we better do
-        setChecked(restoreValue ? getPersistedBoolean((Boolean) defaultValue)
-                : (Boolean) defaultValue);
+    protected void onSetInitialValue(boolean restorePersistedValue, Object defaultValue) {
+        final boolean checked;
+        if (!restorePersistedValue || !isPersisted()) {
+            if (defaultValue == null) {
+                return;
+            }
+            checked = (boolean) defaultValue;
+            if (shouldPersist()) {
+                persistBoolean(checked);
+            }
+        } else {
+            // Note: the default is not used because to have got here
+            // isPersisted() must be true.
+            checked = getBoolean(getKey(), false /* not used */);
+        }
+        setChecked(checked);
     }
 }
